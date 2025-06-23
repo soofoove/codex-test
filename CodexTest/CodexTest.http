@@ -15,3 +15,16 @@ Content-Type: application/json
 }
 
 ###
+
+PATCH {{CodexTest_HostAddress}}/weatherforecast/1
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/summary", "value": "Hot" }
+]
+
+###
+
+DELETE {{CodexTest_HostAddress}}/weatherforecast/1
+
+###

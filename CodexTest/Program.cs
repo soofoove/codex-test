@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.JsonPatch;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddDbContext<WeatherForecastDbContext>(options =>
-    options.UseInMemoryDatabase("WeatherDb"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -14,6 +16,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WeatherForecastDbContext>();
+    db.Database.EnsureCreated();
     if (!db.Forecasts.Any())
     {
         var summaries = new[]
@@ -50,6 +53,32 @@ app.MapPost("/weatherforecast", async (WeatherForecast forecast, WeatherForecast
         return Results.Created($"/weatherforecast/{forecast.Id}", forecast);
     })
     .WithName("CreateWeatherForecast");
+
+app.MapPatch("/weatherforecast/{id}", async (int id, JsonPatchDocument<WeatherForecast> patch, WeatherForecastDbContext db) =>
+    {
+        var forecast = await db.Forecasts.FindAsync(id);
+        if (forecast is null)
+        {
+            return Results.NotFound();
+        }
+        patch.ApplyTo(forecast);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    })
+    .WithName("PatchWeatherForecast");
+
+app.MapDelete("/weatherforecast/{id}", async (int id, WeatherForecastDbContext db) =>
+    {
+        var forecast = await db.Forecasts.FindAsync(id);
+        if (forecast is null)
+        {
+            return Results.NotFound();
+        }
+        db.Forecasts.Remove(forecast);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    })
+    .WithName("DeleteWeatherForecast");
 
 app.Run();
 

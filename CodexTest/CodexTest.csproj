@@ -9,7 +9,9 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0-preview.4.24266.7" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0-preview.4.24266.7" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0-preview.4.24266.7" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.0-preview.4.24266.7" />
+        <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.0-preview.4.24266.7" />
     </ItemGroup>
 
 </Project>
