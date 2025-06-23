@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.JsonPatch;
+using System.Net.Http.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddDbContext<WeatherForecastDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpClient<WeatherService>();
+builder.Services.AddHttpClient<CurrencyService>();
 
 var app = builder.Build();
 
@@ -80,6 +83,25 @@ app.MapDelete("/weatherforecast/{id}", async (int id, WeatherForecastDbContext d
     })
     .WithName("DeleteWeatherForecast");
 
+app.MapGet("/rates", async (CurrencyService currency, WeatherService weather, WeatherForecastDbContext db, IConfiguration config) =>
+    {
+        var temp = await weather.GetKyivTemperatureAsync() ?? 0.0;
+        var thresholdStr = config["TEMP_THRESHOLD"];
+        var threshold = double.TryParse(thresholdStr, out var t) ? t : 21.0;
+        var rates = await currency.GetRatesAsync();
+        foreach (var kv in rates)
+        {
+            db.Rates.Add(new CurrencyRate { Currency = kv.Key, Rate = (decimal)kv.Value, RetrievedAt = DateTime.UtcNow });
+        }
+        await db.SaveChangesAsync();
+        if (temp < threshold)
+        {
+            rates = rates.ToDictionary(k => k.Key, v => v.Value * temp);
+        }
+        return Results.Ok(new { Temperature = temp, Rates = rates });
+    })
+    .WithName("GetRates");
+
 app.Run();
 
 class WeatherForecast
@@ -92,6 +114,14 @@ class WeatherForecast
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
 
+class CurrencyRate
+{
+    public int Id { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public decimal Rate { get; set; }
+    public DateTime RetrievedAt { get; set; }
+}
+
 class WeatherForecastDbContext : DbContext
 {
     public WeatherForecastDbContext(DbContextOptions<WeatherForecastDbContext> options) : base(options)
@@ -99,4 +129,65 @@ class WeatherForecastDbContext : DbContext
     }
 
     public DbSet<WeatherForecast> Forecasts => Set<WeatherForecast>();
+    public DbSet<CurrencyRate> Rates => Set<CurrencyRate>();
+}
+
+class WeatherService
+{
+    private readonly HttpClient _http;
+
+    public WeatherService(HttpClient http)
+    {
+        _http = http;
+    }
+
+    public async Task<double?> GetKyivTemperatureAsync()
+    {
+        try
+        {
+            var url = "https://api.open-meteo.com/v1/forecast?latitude=50.45&longitude=30.52&current_weather=true";
+            var resp = await _http.GetFromJsonAsync<OpenMeteoResponse>(url);
+            return resp?.current_weather?.temperature;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private record OpenMeteoResponse(CurrentWeather current_weather)
+    {
+        public CurrentWeather current_weather { get; init; } = current_weather;
+    }
+
+    private record CurrentWeather(double temperature);
+}
+
+class CurrencyService
+{
+    private readonly HttpClient _http;
+
+    public CurrencyService(HttpClient http)
+    {
+        _http = http;
+    }
+
+    public async Task<Dictionary<string, double>> GetRatesAsync()
+    {
+        try
+        {
+            var url = "https://api.exchangerate.host/latest?base=USD&symbols=EUR,UAH";
+            var resp = await _http.GetFromJsonAsync<ExchangeResponse>(url);
+            return resp?.rates ?? new Dictionary<string, double>();
+        }
+        catch
+        {
+            return new Dictionary<string, double>();
+        }
+    }
+
+    private record ExchangeResponse(Dictionary<string, double> rates)
+    {
+        public Dictionary<string, double> rates { get; init; } = rates;
+    }
 }

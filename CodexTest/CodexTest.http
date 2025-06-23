@@ -28,3 +28,8 @@ Content-Type: application/json-patch+json
 DELETE {{CodexTest_HostAddress}}/weatherforecast/1
 
 ###
+
+GET {{CodexTest_HostAddress}}/rates
+Accept: application/json
+
+###
