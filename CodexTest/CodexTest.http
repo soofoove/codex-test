@@ -1,6 +1,11 @@
 @CodexTest_HostAddress = http://localhost:5073
 
-GET {{CodexTest_HostAddress}}/weatherforecast/
+GET {{CodexTest_HostAddress}}/weather?location=London
+Accept: application/json
+
+###
+
+GET {{CodexTest_HostAddress}}/currency?base=USD
 Accept: application/json
 
 ###
