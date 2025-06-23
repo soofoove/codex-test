@@ -4,3 +4,14 @@ GET {{CodexTest_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+POST {{CodexTest_HostAddress}}/weatherforecast
+Content-Type: application/json
+
+{
+  "date": "2030-01-01",
+  "temperatureC": 25,
+  "summary": "Warm"
+}
+
+###
