@@ -72,4 +72,4 @@ app.MapDelete("/weatherforecast/{id}", async (int id, IWeatherService service) =
 
 app.Run();
 
-public partial class Program { }
+public partial class Program;

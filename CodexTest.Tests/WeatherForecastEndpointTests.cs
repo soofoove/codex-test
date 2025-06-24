@@ -1,26 +1,22 @@
 using System.Net;
 using System.Net.Http.Json;
 using CodexTest.Models;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Configurations;
-using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using CodexTest;
+using Testcontainers.MsSql;
 
 namespace CodexTest.Tests;
 
 public class SqlServerFixture : IAsyncLifetime
 {
-    public MsSqlTestcontainer Container { get; }
+    public MsSqlContainer Container { get; }
 
     public SqlServerFixture()
     {
-        Container = new TestcontainersBuilder<MsSqlTestcontainer>()
-            .WithDatabase(new MsSqlTestcontainerConfiguration { Password = "yourStrong(!)Password" })
-            .Build();
+        Container = new MsSqlBuilder().Build();
     }
 
     public async Task InitializeAsync() => await Container.StartAsync();
@@ -61,7 +57,7 @@ public class WeatherForecastEndpointTests : IClassFixture<SqlServerFixture>
 
     private HttpClient CreateClient()
     {
-        var factory = new WeatherApiFactory(_fixture.Container.ConnectionString);
+        var factory = new WeatherApiFactory(_fixture.Container.GetConnectionString());
         using var scope = factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<WeatherDbContext>();
         ctx.Database.EnsureCreated();
@@ -123,7 +119,8 @@ public class WeatherForecastEndpointTests : IClassFixture<SqlServerFixture>
         using var client = CreateClient();
         var create = new WeatherForecastRequest(DateOnly.FromDateTime(DateTime.Today), 10, "Test");
         var post = await client.PostAsJsonAsync("/weatherforecast", create);
-        var id = int.Parse(post.Headers.Location!.Segments.Last());
+        var location = post.Headers.Location!.ToString(); // e.g. "/weatherforecast/123"
+        var id = int.Parse(location.Split('/').Last());
         var delete = await client.DeleteAsync($"/weatherforecast/{id}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         var get = await client.GetAsync($"/weatherforecast/{id}");
