@@ -1,12 +1,29 @@
+using CodexTest;
+using CodexTest.Mappings;
+using CodexTest.Models;
+using CodexTest.Repositories;
+using CodexTest.Services;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddDbContext<WeatherDbContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddScoped<IWeatherRepository, WeatherRepository>();
+builder.Services.AddScoped<IWeatherService, WeatherService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<WeatherDbContext>();
+    db.Database.EnsureCreated();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,30 +31,45 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/weatherforecast", async (IWeatherService service) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var forecasts = await service.GetAllAsync();
+    return forecasts.Select(f => f.ToResponse());
+}).WithName("GetWeatherForecast");
 
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast");
+app.MapGet("/weatherforecast/{id}", async (int id, IWeatherService service) =>
+{
+    var forecast = await service.GetByIdAsync(id);
+    return forecast is null ? Results.NotFound() : Results.Ok(forecast.ToResponse());
+}).WithName("GetWeatherForecastById");
+
+app.MapPost("/weatherforecast", async (WeatherForecastRequest request, IWeatherService service) =>
+{
+    var id = await service.CreateAsync(request.ToDomain());
+    return Results.Created($"/weatherforecast/{id}", null);
+}).WithName("CreateWeatherForecast");
+
+app.MapPut("/weatherforecast/{id}", async (int id, WeatherForecastUpdateRequest request, IWeatherService service) =>
+{
+    var existing = await service.GetByIdAsync(id);
+    if (existing is null)
+        return Results.NotFound();
+
+    var model = request.ToDomain(id);
+    await service.UpdateAsync(model);
+    return Results.NoContent();
+}).WithName("UpdateWeatherForecast");
+
+app.MapDelete("/weatherforecast/{id}", async (int id, IWeatherService service) =>
+{
+    var existing = await service.GetByIdAsync(id);
+    if (existing is null)
+        return Results.NotFound();
+
+    await service.DeleteAsync(id);
+    return Results.NoContent();
+}).WithName("DeleteWeatherForecast");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
-
-public partial class Program { }
+public partial class Program;
