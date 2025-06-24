@@ -29,9 +29,11 @@ public class WeatherRepository : IWeatherRepository
         }
     }
 
-    public async Task<List<WeatherForecastEntity>> GetAllAsync() => await _context.Forecasts.ToListAsync();
+    public async Task<List<WeatherForecastEntity>> GetAllAsync() => 
+        await _context.Forecasts.AsNoTracking().ToListAsync();
 
-    public async Task<WeatherForecastEntity?> GetByIdAsync(int id) => await _context.Forecasts.FindAsync(id);
+    public async Task<WeatherForecastEntity?> GetByIdAsync(int id) => 
+        await _context.Forecasts.AsNoTracking().FirstOrDefaultAsync(f => f.Id == id);
 
     public async Task UpdateAsync(WeatherForecastEntity forecast)
     {
