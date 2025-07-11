@@ -126,4 +126,38 @@ public class WeatherForecastEndpointTests : IClassFixture<SqlServerFixture>
         var get = await client.GetAsync($"/weatherforecast/{id}");
         Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
     }
+
+    [Fact]
+    public async Task Post_InvalidRequest_ReturnsBadRequest()
+    {
+        using var client = CreateClient();
+        var invalidRequest = new WeatherForecastRequest(default, 0, null!); // Missing summary
+        var response = await client.PostAsJsonAsync("/weatherforecast", invalidRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Put_NonExistentId_ReturnsNotFound()
+    {
+        using var client = CreateClient();
+        var update = new WeatherForecastUpdateRequest(DateOnly.FromDateTime(DateTime.Today), 15, "Updated");
+        var response = await client.PutAsJsonAsync($"/weatherforecast/99999", update);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_NonExistentId_ReturnsNotFound()
+    {
+        using var client = CreateClient();
+        var response = await client.GetAsync("/weatherforecast/99999");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_NonExistentId_ReturnsNotFound()
+    {
+        using var client = CreateClient();
+        var response = await client.DeleteAsync("/weatherforecast/99999");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

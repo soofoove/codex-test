@@ -3,6 +3,8 @@ using CodexTest.Mappings;
 using CodexTest.Models;
 using CodexTest.Repositories;
 using CodexTest.Services;
+using CodexTest.Middleware;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,7 @@ builder.Services.AddDbContext<WeatherDbContext>(options => options.UseSqlServer(
 
 builder.Services.AddScoped<IWeatherRepository, WeatherRepository>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 var app = builder.Build();
 
@@ -43,8 +46,9 @@ app.MapGet("/weatherforecast/{id}", async (int id, IWeatherService service) =>
     return forecast is null ? Results.NotFound() : Results.Ok(forecast.ToResponse());
 }).WithName("GetWeatherForecastById");
 
-app.MapPost("/weatherforecast", async (WeatherForecastRequest request, IWeatherService service) =>
+app.MapPost("/weatherforecast", async (WeatherForecastRequest request, IWeatherService service, IValidator<WeatherForecastRequest> validator) =>
 {
+    await validator.ValidateAndThrowAsync(request);
     var id = await service.CreateAsync(request.ToDomain());
     return Results.Created($"/weatherforecast/{id}", null);
 }).WithName("CreateWeatherForecast");
@@ -69,6 +73,8 @@ app.MapDelete("/weatherforecast/{id}", async (int id, IWeatherService service) =
     await service.DeleteAsync(id);
     return Results.NoContent();
 }).WithName("DeleteWeatherForecast");
+
+app.UseCustomExceptionHandling();
 
 app.Run();
 
