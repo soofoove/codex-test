@@ -1,5 +1,3 @@
-using System;
-
 namespace CodexTest.Exceptions;
 
 public class BadRequestException : Exception
