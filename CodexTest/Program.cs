@@ -1,9 +1,9 @@
 using CodexTest;
+using CodexTest.Extensions;
 using CodexTest.Mappings;
 using CodexTest.Models;
 using CodexTest.Repositories;
 using CodexTest.Services;
-using CodexTest.Middleware;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 

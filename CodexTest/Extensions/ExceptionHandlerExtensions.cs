@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using CodexTest.Exceptions;
-using FluentValidation; // Make sure to use your Exceptions namespace
+using FluentValidation;
 
-namespace CodexTest.Middleware;
+namespace CodexTest.Extensions;
 
-public static class ExceptionHandlingMiddlewareExtensions
+public static class ExceptionHandlerExtensions
 {
     public static IApplicationBuilder UseCustomExceptionHandling(this IApplicationBuilder app)
     {
